@@ -30,6 +30,7 @@ export default function Home() {
   const [showLabels, setShowLabels] = useState(true)
   const [realScale, setRealScale] = useState(false)
   const [starBackground, setStarBackground] = useState(true)
+  const [realisticRendering, setRealisticRendering] = useState(false) // 逼真渲染开关
 
   // 轨迹控制状态
   const [trailType, setTrailType] = useState('classic')
@@ -95,6 +96,8 @@ export default function Home() {
             currentDate={formatDate(simulationDate)}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            realisticRendering={realisticRendering}
+            setRealisticRendering={setRealisticRendering}
           />
         </div>
       )}
@@ -117,6 +120,7 @@ export default function Home() {
           isPlaying={isPlaying}
           onPlanetSelect={setSelectedPlanet}
           viewMode={viewMode}
+          realisticRendering={realisticRendering}
         />
       </div>
 

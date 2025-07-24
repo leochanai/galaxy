@@ -30,6 +30,8 @@ interface ControlPanelProps {
   currentDate: string
   viewMode: 'solar-system' | 'galaxy-cluster'
   setViewMode: (mode: 'solar-system' | 'galaxy-cluster') => void
+  realisticRendering: boolean
+  setRealisticRendering: (value: boolean) => void
 }
 
 /**
@@ -77,7 +79,9 @@ export default function ControlPanel(props: ControlPanelProps) {
     setIsPlaying,
     currentDate,
     viewMode,
-    setViewMode
+    setViewMode,
+    realisticRendering,
+    setRealisticRendering
   } = props
 
   return (
@@ -156,6 +160,15 @@ export default function ControlPanel(props: ControlPanelProps) {
             onCheckedChange={setShowLabels}
           />
         </ControlItem>
+
+        {viewMode === 'solar-system' && (
+          <ControlItem label="逼真纹理">
+            <Switch
+              checked={realisticRendering}
+              onCheckedChange={setRealisticRendering}
+            />
+          </ControlItem>
+        )}
 
         {viewMode === 'solar-system' && (
           <ControlItem label="真实比例">

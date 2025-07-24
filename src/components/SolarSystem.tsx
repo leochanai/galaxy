@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import { satelliteDatabase, planetSatellites, SatelliteData } from '@/data/satelliteData'
 import { galaxyDatabase, galaxyPositions } from '@/data/galaxyData'
 import Galaxy from './Galaxy'
+import RealisticPlanet from './RealisticPlanet'
 
 /**
  * 太阳系组件属性接口
@@ -26,6 +27,7 @@ interface SolarSystemProps {
   isPlaying: boolean
   onPlanetSelect?: (planetId: string) => void
   viewMode: 'solar-system' | 'galaxy-cluster'
+  realisticRendering?: boolean  // 新增：逼真渲染开关
 }
 
 /**
@@ -820,7 +822,8 @@ function Planet({
   trailType,
   trailLength,
   trailIntensity,
-  cameraDistance
+  cameraDistance,
+  realisticRendering
 }: {
   planet: PlanetInfo
   timeSpeed: number
@@ -833,6 +836,7 @@ function Planet({
   trailLength: number
   trailIntensity: number
   cameraDistance: number
+  realisticRendering?: boolean
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const orbitRef = useRef<THREE.Group>(null!)
@@ -1054,6 +1058,19 @@ function Planet({
       onClick: () => onSelect(planet.id),
       onPointerOver: () => document.body.style.cursor = 'pointer',
       onPointerOut: () => document.body.style.cursor = 'auto'
+    }
+    
+    // 如果开启逼真渲染，使用新的RealisticPlanet组件
+    if (realisticRendering) {
+      return (
+        <RealisticPlanet
+          planetId={planet.id}
+          size={size}
+          position={[0, 0, 0]}
+          timeSpeed={timeSpeed}
+          onSelect={() => onSelect(planet.id)}
+        />
+      )
     }
     
     switch (planet.id) {
@@ -1801,6 +1818,7 @@ function Scene(props: SolarSystemProps & { zoomTargetPlanet: string | null }) {
               trailLength={props.trailLength}
               trailIntensity={props.trailIntensity}
               cameraDistance={cameraDistance}
+              realisticRendering={props.realisticRendering}
             />
           ))}
         </>
