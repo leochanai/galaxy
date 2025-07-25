@@ -28,6 +28,8 @@ interface SolarSystemProps {
   onPlanetSelect?: (planetId: string) => void
   viewMode: 'solar-system' | 'galaxy-cluster'
   realisticRendering?: boolean  // 新增：逼真渲染开关
+  setIsPlaying?: (playing: boolean) => void  // 新增：控制播放状态
+  resetViewTrigger?: number  // 新增：重置视图触发器
 }
 
 /**
@@ -1680,32 +1682,51 @@ function CameraZoomController({ targetPlanet, planetData, realScale, orbitContro
         // 根据行星大小计算合适的观察距离
         const planetSize = realScale ? planet.size * 0.5 : planet.size
         const zoomParams = {
-          mercury: { distance: 3, height: 1.5 },
-          venus: { distance: 5, height: 2.5 },
-          earth: { distance: 6, height: 3 },
-          mars: { distance: 4, height: 2 },
-          jupiter: { distance: 12, height: 6 },
-          saturn: { distance: 15, height: 8 },
-          uranus: { distance: 10, height: 5 },
-          neptune: { distance: 10, height: 5 },
-          sun: { distance: 20, height: 10 }
+          mercury: { distance: 2.5, height: 0.5 },     // 水星观察距离
+          venus: { distance: 3.5, height: 0.8 },       // 金星观察距离  
+          earth: { distance: 4.5, height: 1.2 },       // 地球观察距离，方便观察大气层
+          mars: { distance: 3.5, height: 0.8 },        // 火星观察距离
+          jupiter: { distance: 10, height: 2 },        // 木星观察距离
+          saturn: { distance: 12, height: 2.5 },       // 土星观察距离，便于观察光环
+          uranus: { distance: 7, height: 1.5 },        // 天王星观察距离
+          neptune: { distance: 7, height: 1.5 },       // 海王星观察距离
+          sun: { distance: 18, height: 3 }             // 太阳观察距离
         }
         
         const params = zoomParams[planet.id as keyof typeof zoomParams] || 
                       { distance: Math.max(planetSize * 4, 3), height: Math.max(planetSize * 2, 1.5) }
         
-        // 计算目标相机位置（在行星前方稍高的位置）
-        const targetCameraPosition = new THREE.Vector3(
-          planetX + params.distance * 0.7,
-          params.height,
-          planetZ + params.distance * 0.7
-        )
+        // 计算目标相机位置（确保行星居中显示）
+        // 为不同行星选择最佳观察角度
+        let direction: THREE.Vector3
         
-        // 更新 OrbitControls 的目标为行星位置
-        orbitControlsRef.current.target.copy(planetPosition)
+        switch (planet.id) {
+          case 'saturn':
+            // 土星从稍微斜上方观察，便于看到光环
+            direction = new THREE.Vector3(0.8, 0.6, 0.8).normalize()
+            break
+          case 'earth':
+            // 地球从前方稍高处观察，展示大气层
+            direction = new THREE.Vector3(1, 0.4, 0.8).normalize()
+            break
+          case 'jupiter':
+            // 木星从前方观察，展示大红斑
+            direction = new THREE.Vector3(1, 0.2, 0.6).normalize()
+            break
+          default:
+            // 其他行星使用标准观察角度
+            direction = new THREE.Vector3(1, 0.3, 0.8).normalize()
+        }
+        
+        const targetCameraPosition = new THREE.Vector3(
+          planetX + direction.x * params.distance,
+          direction.y * params.distance + params.height,
+          planetZ + direction.z * params.distance
+        )
         
         // 平滑移动相机到目标位置
         const startPosition = camera.position.clone()
+        const startTarget = orbitControlsRef.current.target.clone()
         const duration = 2000 // 2秒动画
         const startTime = Date.now()
         
@@ -1719,6 +1740,9 @@ function CameraZoomController({ targetPlanet, planetData, realScale, orbitContro
           // 插值相机位置
           camera.position.lerpVectors(startPosition, targetCameraPosition, easeProgress)
           
+          // 插值OrbitControls目标，确保始终指向行星中心
+          orbitControlsRef.current.target.lerpVectors(startTarget, planetPosition, easeProgress)
+          
           // 更新控制器
           orbitControlsRef.current.update()
           
@@ -1726,6 +1750,9 @@ function CameraZoomController({ targetPlanet, planetData, realScale, orbitContro
             requestAnimationFrame(animateZoom)
           } else {
             setIsZooming(false)
+            // 确保最终状态正确
+            orbitControlsRef.current.target.copy(planetPosition)
+            orbitControlsRef.current.update()
           }
         }
         
@@ -1920,6 +1947,11 @@ function ErrorBoundary({ children }: { children: React.ReactNode }) {
 export default function SolarSystem(props: SolarSystemProps) {
   const [zoomTargetPlanet, setZoomTargetPlanet] = useState<string | null>(null)
   
+  // 重置视图函数
+  const resetView = () => {
+    setZoomTargetPlanet(null)
+  }
+  
   // 初始化时预加载纹理
   useEffect(() => {
     preloadTextures()
@@ -1929,6 +1961,13 @@ export default function SolarSystem(props: SolarSystemProps) {
   useEffect(() => {
     setZoomTargetPlanet(null)
   }, [props.viewMode])
+  
+  // 重置视图触发器
+  useEffect(() => {
+    if (props.resetViewTrigger !== undefined) {
+      resetView()
+    }
+  }, [props.resetViewTrigger])
   
   // 清理资源
   useEffect(() => {
@@ -1943,6 +1982,11 @@ export default function SolarSystem(props: SolarSystemProps) {
   
   // 处理天体选择
   const handleCelestialSelect = (celestialId: string) => {
+    // 点击行星/卫星时自动停止播放
+    if (props.setIsPlaying) {
+      props.setIsPlaying(false)
+    }
+    
     // 星系群视图下不支持缩放
     if (props.viewMode === 'galaxy-cluster') {
       if (props.onPlanetSelect) {

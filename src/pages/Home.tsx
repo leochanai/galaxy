@@ -50,6 +50,14 @@ export default function Home() {
   // 视图模式状态
   const [viewMode, setViewMode] = useState<'solar-system' | 'galaxy-cluster'>('solar-system')
   
+  // 重置视图触发器
+  const [resetViewTrigger, setResetViewTrigger] = useState<number>(0)
+  
+  // 重置视图函数
+  const handleResetView = () => {
+    setSelectedPlanet(null)  // 清除选中的行星
+    setResetViewTrigger(prev => prev + 1)  // 触发重置
+  }
 
 
   // 更新模拟时间
@@ -98,6 +106,7 @@ export default function Home() {
             setViewMode={setViewMode}
             realisticRendering={realisticRendering}
             setRealisticRendering={setRealisticRendering}
+            onResetView={handleResetView}
           />
         </div>
       )}
@@ -118,9 +127,11 @@ export default function Home() {
           trailLength={trailLength}
           trailIntensity={trailIntensity}
           isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
           onPlanetSelect={setSelectedPlanet}
           viewMode={viewMode}
           realisticRendering={realisticRendering}
+          resetViewTrigger={resetViewTrigger}
         />
       </div>
 

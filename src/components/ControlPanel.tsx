@@ -32,6 +32,7 @@ interface ControlPanelProps {
   setViewMode: (mode: 'solar-system' | 'galaxy-cluster') => void
   realisticRendering: boolean
   setRealisticRendering: (value: boolean) => void
+  onResetView?: () => void  // 新增：重置视图回调
 }
 
 /**
@@ -81,7 +82,8 @@ export default function ControlPanel(props: ControlPanelProps) {
     viewMode,
     setViewMode,
     realisticRendering,
-    setRealisticRendering
+    setRealisticRendering,
+    onResetView
   } = props
 
   return (
@@ -283,7 +285,7 @@ export default function ControlPanel(props: ControlPanelProps) {
 
         {/* 播放控制 - 只在太阳系视图显示 */}
         {viewMode === 'solar-system' && (
-          <div className="pt-1 border-t border-slate-700">
+          <div className="pt-1 border-t border-slate-700 space-y-2">
             <ControlItem label="暂停/播放">
               <Button
                 variant="outline"
@@ -295,6 +297,19 @@ export default function ControlPanel(props: ControlPanelProps) {
                 {isPlaying ? '暂停' : '播放'}
               </Button>
             </ControlItem>
+            
+            {onResetView && (
+              <ControlItem label="重置视图">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onResetView}
+                  className="bg-slate-800 border-slate-600 text-white hover:bg-slate-700 hover:border-slate-500 transition-colors bg-transparent"
+                >
+                  🏠 整体视图
+                </Button>
+              </ControlItem>
+            )}
           </div>
         )}
 
