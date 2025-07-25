@@ -825,7 +825,8 @@ function Planet({
   trailLength,
   trailIntensity,
   cameraDistance,
-  realisticRendering
+  realisticRendering,
+  onPositionUpdate
 }: {
   planet: PlanetInfo
   timeSpeed: number
@@ -839,6 +840,7 @@ function Planet({
   trailIntensity: number
   cameraDistance: number
   realisticRendering?: boolean
+  onPositionUpdate?: (planetId: string, position: THREE.Vector3) => void
 }) {
   const meshRef = useRef<THREE.Mesh>(null!)
   const orbitRef = useRef<THREE.Group>(null!)
@@ -879,6 +881,11 @@ function Planet({
     if (orbitRef.current) {
       orbitRef.current.position.x = newX
       orbitRef.current.position.z = newZ
+      
+      // 回调位置更新给父组件
+      if (onPositionUpdate) {
+        onPositionUpdate(planet.id, new THREE.Vector3(newX, 0, newZ))
+      }
       
       // 更新拖尾位置
       if (trailType !== 'none') {
@@ -1656,11 +1663,12 @@ function Sun({ onSelect, showLabels, realScale, cameraDistance }: {
 /**
  * 相机缩放控制器组件
  */
-function CameraZoomController({ targetPlanet, planetData, realScale, orbitControlsRef }: {
+function CameraZoomController({ targetPlanet, planetData, realScale, orbitControlsRef, planetPositions }: {
   targetPlanet: string | null;
   planetData: PlanetInfo[];
   realScale: boolean;
   orbitControlsRef: React.MutableRefObject<any>;
+  planetPositions: Map<string, THREE.Vector3>;
 }) {
   const { camera } = useThree()
   const [isZooming, setIsZooming] = useState(false)
@@ -1672,12 +1680,15 @@ function CameraZoomController({ targetPlanet, planetData, realScale, orbitContro
       // 找到目标行星
       const planet = planetData.find(p => p.id === targetPlanet)
       if (planet) {
-        // 计算行星当前位置
-        const time = Date.now() * 0.0001 * planet.speed
-        const orbitDistance = realScale ? planet.realDistance : planet.distance
-        const planetX = Math.cos(time) * orbitDistance
-        const planetZ = Math.sin(time) * orbitDistance
-        const planetPosition = new THREE.Vector3(planetX, 0, planetZ)
+        // 使用实际的行星位置
+        const planetPosition = planetPositions.get(targetPlanet)
+        if (!planetPosition) {
+          console.warn(`Planet position not found for: ${targetPlanet}`)
+          return
+        }
+        
+        const planetX = planetPosition.x
+        const planetZ = planetPosition.z
         
         // 根据行星大小计算合适的观察距离
         const planetSize = realScale ? planet.size * 0.5 : planet.size
@@ -1759,7 +1770,7 @@ function CameraZoomController({ targetPlanet, planetData, realScale, orbitContro
         animateZoom()
       }
     }
-  }, [targetPlanet, planetData, realScale, camera, orbitControlsRef])
+  }, [targetPlanet, planetData, realScale, camera, orbitControlsRef, planetPositions])
 
   return null
 }
@@ -1771,6 +1782,12 @@ function Scene(props: SolarSystemProps & { zoomTargetPlanet: string | null }) {
   const { camera } = useThree()
   const [cameraDistance, setCameraDistance] = useState(100)
   const orbitControlsRef = useRef<any>(null)
+  const [planetPositions, setPlanetPositions] = useState<Map<string, THREE.Vector3>>(new Map())
+  
+  // 处理行星位置更新
+  const handlePlanetPositionUpdate = (planetId: string, position: THREE.Vector3) => {
+    setPlanetPositions(prev => new Map(prev.set(planetId, position.clone())))
+  }
   
   useEffect(() => {
     // 根据视图模式和真实比例调整相机位置
@@ -1820,6 +1837,7 @@ function Scene(props: SolarSystemProps & { zoomTargetPlanet: string | null }) {
             planetData={planetData} 
             realScale={props.realScale}
             orbitControlsRef={orbitControlsRef}
+            planetPositions={planetPositions}
           />
           
           {/* 太阳 */}
@@ -1846,6 +1864,7 @@ function Scene(props: SolarSystemProps & { zoomTargetPlanet: string | null }) {
               trailIntensity={props.trailIntensity}
               cameraDistance={cameraDistance}
               realisticRendering={props.realisticRendering}
+              onPositionUpdate={handlePlanetPositionUpdate}
             />
           ))}
         </>
